@@ -35,6 +35,7 @@ class RecordError(Exception):
 A menu - you need to add the database and fill in the functions. 
 """
 
+# TODO create database table OR set up Peewee model to create table
 
 def main():
     menu_text = """
