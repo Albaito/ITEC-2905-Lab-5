@@ -1,21 +1,9 @@
 import sqlite3
-import os
 
 con = sqlite3.connect('records_db.sqlite')
 con.row_factory = sqlite3.Row
-
 con.execute('create table if not exists records (name text, country text, catches integer, UNIQUE(name COLLATE NOCASE))')
-
 con.commit()
-
-for row in con.execute('select * from records'):
-    print(row['name'])
-
-con.close()
-
-with sqlite3.connect('records_db.sqlite') as con:
-    con.execute('delete from records')
-    con.execute('insert into records (name, country, catches) values ("Jim Jam", "United States", 89)')
 con.close()
 
 class Record:
@@ -73,16 +61,21 @@ def main():
 def display_all_records():
     get_all_records_sql = 'select * from records'
 
-    con = sqlite3.connect('records_db.sqlite')
-    con.row_factory = sqlite3.Row
-    rows = con.execute(get_all_records_sql)
+    with sqlite3.connect('records_db.sqlite') as con:
+        con.row_factory = sqlite3.Row
+        cursor = con.cursor()
+        rows = cursor.execute(get_all_records_sql)
 
-    records = []
+        
 
-    for i in rows:
-        record = Record(i['name'], i['country'], i['catches'])
-        records.append(record)
-        print(record.id)
+        records = []
+
+        for i in rows:
+            record = Record(i['name'], i['country'], i['catches'])
+            new_id = cursor.lastrowid
+            record.id = new_id
+            records.append(record)
+            
 
     con.close()
 
@@ -91,7 +84,21 @@ def display_all_records():
 
 
 def search_by_name():
-    print('todo ask user for a name, and print the matching record if found. What should the program do if the name is not found?')
+    name = str(input('Who\'s record do you wish to view: \n'))
+    
+    get_record_by_name_sql = 'select * from records where upper(name) = upper(?)'
+
+    with sqlite3.connect('records_db.sqlite') as con:
+        con.row_factory = sqlite3.Row
+        cursor = con.cursor()
+        rows = cursor.execute(get_record_by_name_sql, (name, ))
+
+        
+        for i in rows:
+            print(i['name'], i['country'], i['catches'])
+        
+        
+    con.close()
 
 
 def add_new_record(record):
@@ -103,8 +110,11 @@ def add_new_record(record):
 
     try:
         with sqlite3.connect('records_db.sqlite') as con:
-            res = con.execute(insert_sql, (record.name, record.country, record.catches))  
-            new_id = res.lastrowid
+            cursor = con.cursor()
+            cursor.execute(insert_sql, (record.name, record.country, record.catches))
+            new_id = cursor.lastrowid
+
+            print('new id', new_id)
             record.id = new_id
     except sqlite3.IntegrityError:
         raise RecordError(f'Error - record for: {record.name} already exists')
@@ -113,12 +123,14 @@ def add_new_record(record):
 
 
 def edit_existing_record():
-    name = input('Who\'s record do you wish to change: ')
+    chosen_id = input('Enter the id for the row you wish to modify: ')
+
+    new_record = get_record_info()
 
     update_record_sql = 'update records set name = ?, country = ?, catches = ? where rowid = ?'
 
     with sqlite3.connect('records_db.sqlite') as con:
-        updated = con.execute(update_record_sql, ())
+        updated = con.execute(update_record_sql, (new_record.name, new_record.country, new_record.catches , chosen_id))
 
 
 def delete_record(record):
