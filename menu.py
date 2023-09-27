@@ -131,7 +131,12 @@ def edit_existing_record():
 
     with sqlite3.connect('records_db.sqlite') as con:
         updated = con.execute(update_record_sql, (new_record.name, new_record.country, new_record.catches , chosen_id))
+        rows_modified = updated.rowcount
+    
+    con.close()
 
+    if rows_modified == 0:
+        raise RecordError(f'Record with id {chosen_id} not found')
 
 def delete_record(record):
     
